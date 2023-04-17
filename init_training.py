@@ -7,6 +7,7 @@ import pytz
 
 # local application / library specific imports 
 import modules.data_handler as dh
+import modules.indicators as ind
 
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.layers import Dense, LSTM, GRU
@@ -22,8 +23,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 # set the parameters:
 time_frame = 10
-epochs = 10
-hidden_layers = 15
+epochs = 50
+hidden_layers = 10
 simulations = 5
 
 
@@ -54,7 +55,7 @@ data_df.drop("Open", axis=1, inplace=True)
 
 # convert DataFrame into scaled array (reshape was needed for close price only)
 scaler = MinMaxScaler(feature_range=(0,1))
-data_arr = scaler.fit_transform(np.array(data_df["Close"]).reshape(-1,1))
+data_arr = scaler.fit_transform(np.array(data_df))
 
 # split the array into the training and testing chunks and returns two arrays
 def ts_split(ts, window=4):
@@ -70,11 +71,11 @@ X, y = ts_split(data_arr, window=time_frame)
 
 # build the model
 model = Sequential()
-model.add(LSTM(6, input_shape=[X.shape[1], X.shape[2]], return_sequences=True))
+model.add(LSTM(100, input_shape=[X.shape[1], X.shape[2]], return_sequences=True))
 for x in range(hidden_layers):
-    model.add(LSTM(5, return_sequences=True))
+    model.add(LSTM(50, return_sequences=True))
 model.add(LSTM(4, return_sequences=False))
-model.add(Dense(1, activation=linear))
+model.add(Dense(3, activation=linear))
 
 print(model.summary())
 
@@ -118,7 +119,7 @@ hist = model.fit(
 )
 
 # shape after time_frames is for amount of predicitons - 1 because only close
-X_last = data_arr[len(data_arr)-time_frame:].reshape(1, time_frame, 1)
+X_last = data_arr[len(data_arr)-time_frame:].reshape(1, time_frame, 3)
 
 def predict_future(X, model, horizon=5):
     X_in = X
@@ -133,7 +134,7 @@ def predict_future(X, model, horizon=5):
 
 
 predictions = pd.DataFrame(predict_future(X_last, model, horizon=simulations))
-predictions.columns = ["Close"]     #data_df.columns
+predictions.columns = data_df.columns
 
 # set the index of the dataframe to the upcoming week
 today = datetime.date.today()
@@ -143,6 +144,8 @@ if today.weekday() == 5:
     delta_days = 2
 elif today.weekday() == 6:
     delta_days = 1
+else:
+    delta_days = 0
 
 # get the date from monday
 monday = today + datetime.timedelta(days=delta_days)
@@ -152,6 +155,7 @@ date_range = pd.date_range(start=monday, periods=len(predictions), freq="D")
 
 # set the index to the dates
 predictions.index = date_range
+
 
 # Create a figure with two subplots
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(8, 10))

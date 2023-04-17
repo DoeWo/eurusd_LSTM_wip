@@ -7,7 +7,7 @@ class IndicatorCreator():
     """
 
     def __init__(self, df=None):
-        assert isinstance(df, pd.core.frame.DataFrame), "df muss ein DataFrame sein"
+        assert isinstance(df, pd.core.frame.DataFrame), "df must be a dataframe"
 
         self.df = df
 
