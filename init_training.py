@@ -22,10 +22,15 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # set the parameters:
-time_frame = 75
-epochs = 5
-hidden_layers = 250
+time_frame = 5
+epochs = 30000
+hidden_layers = 1
 simulations = 5
+
+neurons_first_layer = 200
+neurons_hidden_loop = 100
+neurons_last_layer = 50
+neurons_dense = 3
 
 
 # specify the ticker that should be downloaded and the starting day
@@ -55,7 +60,7 @@ data_df.drop("Open", axis=1, inplace=True)
 
 # convert DataFrame into scaled array (reshape was needed for close price only)
 scaler = MinMaxScaler(feature_range=(0,1))
-data_arr = scaler.fit_transform(np.array(data_df))
+data_arr = scaler.fit_transform(np.array(data_df[:]))
 
 # split the array into the training and testing chunks and returns two arrays
 def ts_split(ts, window=4):
@@ -69,13 +74,14 @@ def ts_split(ts, window=4):
 # split the data with the prev. defined function
 X, y = ts_split(data_arr, window=time_frame)
 
+
 # build the model
 model = Sequential()
-model.add(LSTM(100, input_shape=[X.shape[1], X.shape[2]], return_sequences=True))
+model.add(LSTM(neurons_first_layer, input_shape=[X.shape[1], X.shape[2]], return_sequences=True))
 for x in range(hidden_layers):
-    model.add(LSTM(50, return_sequences=True))
-model.add(LSTM(4, return_sequences=False))
-model.add(Dense(3, activation=linear))
+    model.add(LSTM(neurons_hidden_loop, return_sequences=True))
+model.add(LSTM(neurons_last_layer, return_sequences=False))
+model.add(Dense(neurons_dense, activation=linear))
 
 print(model.summary())
 
@@ -168,11 +174,11 @@ ax1.legend(loc=0)
 ax1.set_title('Loss and Val Loss')
 
 # Second subplot: plot data_df and predictions
-ax2.plot(data_df.Close[len(data_df)-20:])
+ax2.plot(data_df[len(data_df)-20:])
 ax2.plot(predictions)
 ax2.set_title('Data and Predictions')
 
 # Save the figure as a PNG image
 fig.savefig(
-    f"result_img/training_{epochs}_epochs_{hidden_layers}_layers_{time_frame}_time_frame.png",
+    f"result_img/training_{epochs}_epochs_{hidden_layers}_layers_{time_frame}_time_frame{neurons_first_layer + neurons_hidden_loop * hidden_layers + neurons_last_layer + neurons_dense}_neurons.png",
 )
