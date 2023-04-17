@@ -22,9 +22,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # set the parameters:
-time_frame = 10
-epochs = 50
-hidden_layers = 10
+time_frame = 50
+epochs = 5
+hidden_layers = 250
 simulations = 5
 
 
@@ -115,7 +115,8 @@ hist = model.fit(
     verbose=1,
     callbacks=[
         checkpoint
-    ]
+    ],
+    validation_split = 0.3
 )
 
 # shape after time_frames is for amount of predicitons - 1 because only close
@@ -162,7 +163,7 @@ fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(8, 10))
 
 # First subplot: plot loss and val_loss
 ax1.plot(hist.history["loss"], label="loss")
-#ax1.plot(hist.history["val_loss"], label="val_loss")
+ax1.plot(hist.history["val_loss"], label="val_loss")
 ax1.legend(loc=0)
 ax1.set_title('Loss and Val Loss')
 
