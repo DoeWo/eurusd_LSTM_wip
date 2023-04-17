@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 # set the parameters:
-time_frame = 50
+time_frame = 75
 epochs = 5
 hidden_layers = 250
 simulations = 5

@@ -1,2 +1,4 @@
 st_env/
 result_img/
+
+*.h5
