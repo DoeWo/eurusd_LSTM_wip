@@ -15,17 +15,25 @@ from tensorflow.keras.activations import linear
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import mse
 from tensorflow.keras.metrics import mae
-from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping
 
 from sklearn.preprocessing import MinMaxScaler
 
 
+# todo: model tester module
+# todo: model db
+# todo: model trainer module
+# todo: index in dataframes in nummern umwandeln
+# todo: mehr tage forecasten
+# todo: grid search für die modelle
+# todo: cuda zum laufen bringen
+
 
 # set the parameters:
-time_frame = 5
+time_frame = 10
 epochs = 30000
-hidden_layers = 1
-simulations = 5
+hidden_layers = 10
+simulations = 10
 
 neurons_first_layer = 200
 neurons_hidden_loop = 100
@@ -94,7 +102,7 @@ model.compile(
 
 # create callback to save model with lowest loss
 checkpoint = ModelCheckpoint(
-    filepath="bestmodel-new.h5",
+    filepath="bestmodel_new_more_layer_more.h5",
     monitor="loss",
     save_best_only = True,
     verbose = True
@@ -113,6 +121,16 @@ def lr_schedule(epoch, lr):
 
 lr_callback = LearningRateScheduler(schedule=lr_schedule, verbose=1)
 
+# early stopping callback
+early_stopper = EarlyStopping(
+    monitor="loss",
+    patience = 1000,
+    verbose=1,
+    mode="min",
+    restore_best_weights=True
+)
+
+
 # train model
 hist = model.fit(
     X,
@@ -120,7 +138,8 @@ hist = model.fit(
     epochs=epochs,
     verbose=1,
     callbacks=[
-        checkpoint
+        checkpoint,
+        early_stopper
     ],
     validation_split = 0.3
 )
@@ -168,7 +187,7 @@ predictions.index = date_range
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(8, 10))
 
 # First subplot: plot loss and val_loss
-ax1.plot(hist.history["loss"], label="loss")
+ax1.plot(hist.history["loss"][100:], label="loss")
 ax1.plot(hist.history["val_loss"], label="val_loss")
 ax1.legend(loc=0)
 ax1.set_title('Loss and Val Loss')
@@ -180,5 +199,5 @@ ax2.set_title('Data and Predictions')
 
 # Save the figure as a PNG image
 fig.savefig(
-    f"result_img/training_{epochs}_epochs_{hidden_layers}_layers_{time_frame}_time_frame{neurons_first_layer + neurons_hidden_loop * hidden_layers + neurons_last_layer + neurons_dense}_neurons.png",
+    f"result_img/training_{epochs}_epochs_{hidden_layers}_layers_{time_frame}_time_frame_{neurons_first_layer + neurons_hidden_loop * hidden_layers + neurons_last_layer + neurons_dense}_neurons.png",
 )
