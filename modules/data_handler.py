@@ -83,7 +83,9 @@ class DataHandler():
         
             return data
 
-    
+
+class DFModifier():
+    pass
 
 
 if __name__=="__main__":

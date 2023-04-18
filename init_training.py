@@ -32,7 +32,7 @@ from sklearn.preprocessing import MinMaxScaler
 # set the parameters:
 time_frame = 10
 epochs = 30000
-hidden_layers = 10
+hidden_layers = 1
 simulations = 10
 
 neurons_first_layer = 200
@@ -55,7 +55,7 @@ data_df = (dh.
 
 
 # maybe delete below section because only the close price should be predicted
-#----------------------------------------
+#---------------------------------------- (move this part to data_handler)
 # drop the volumn column if it doe's not contain values
 if data_df["Volume"].sum()==0:
     data_df.drop("Volume", axis=1, inplace=True)
@@ -124,7 +124,7 @@ lr_callback = LearningRateScheduler(schedule=lr_schedule, verbose=1)
 # early stopping callback
 early_stopper = EarlyStopping(
     monitor="loss",
-    patience = 1000,
+    patience = 100,
     verbose=1,
     mode="min",
     restore_best_weights=True
@@ -183,6 +183,7 @@ date_range = pd.date_range(start=monday, periods=len(predictions), freq="D")
 predictions.index = date_range
 
 
+# Build module for plotting (candlestick)
 # Create a figure with two subplots
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(8, 10))
 
