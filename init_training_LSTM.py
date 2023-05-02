@@ -4,14 +4,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
 import pytz
+import mplfinance as mpf
 
 # local application / library specific imports 
 import modules.data_handler as dh
 import modules.indicators as ind
 
 from tensorflow.keras.models import Sequential, model_from_json
-from tensorflow.keras.layers import Dense, LSTM, GRU
-from tensorflow.keras.activations import linear
+from tensorflow.keras.layers import Dense, LSTM, GRU, Dropout
+from tensorflow.keras.activations import linear, relu, tanh
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import mse
 from tensorflow.keras.metrics import mae
@@ -28,17 +29,18 @@ from sklearn.preprocessing import MinMaxScaler
 # todo: grid search für die modelle
 # todo: cuda zum laufen bringen
 
-
+start_zeit = datetime.datetime.now()
 # set the parameters:
-time_frame = 10
+time_frame = 50
 epochs = 30000
-hidden_layers = 1
-simulations = 10
+hidden_layers = 4
+simulations = 5
 
-neurons_first_layer = 200
-neurons_hidden_loop = 100
-neurons_last_layer = 50
-neurons_dense = 3
+neurons_first_layer = 10
+neurons_hidden_loop = 10
+neurons_last_layer = 5
+neurons_dense = 2
+early_stopping_patience = 1000
 
 
 # specify the ticker that should be downloaded and the starting day
@@ -63,6 +65,7 @@ if data_df["Volume"].sum()==0:
 # drop adj close
 data_df.drop("Adj Close", axis=1, inplace=True)
 data_df.drop("Open", axis=1, inplace=True)
+data_df.drop("Close", axis=1, inplace=True)
 
 # ---------------------------------------
 
@@ -88,6 +91,8 @@ model = Sequential()
 model.add(LSTM(neurons_first_layer, input_shape=[X.shape[1], X.shape[2]], return_sequences=True))
 for x in range(hidden_layers):
     model.add(LSTM(neurons_hidden_loop, return_sequences=True))
+    if hidden_layers//(x+1) == 2:
+        model.add(Dropout(0.5))
 model.add(LSTM(neurons_last_layer, return_sequences=False))
 model.add(Dense(neurons_dense, activation=linear))
 
@@ -102,8 +107,8 @@ model.compile(
 
 # create callback to save model with lowest loss
 checkpoint = ModelCheckpoint(
-    filepath="bestmodel_new_more_layer_more.h5",
-    monitor="loss",
+    filepath="qwer_bestmodel_new_more_layer_more.h5",
+    monitor="val_loss",
     save_best_only = True,
     verbose = True
 )
@@ -111,11 +116,12 @@ checkpoint = ModelCheckpoint(
 # custom learning rate schedule
 def lr_schedule(epoch, lr):
     initial_lr = 0.1
-    decay_rate = 0.5
-    update_frequency = 100  # Update learning rate every 20 epochs
+    decay_rate = 0.025
+    update_frequency = 50  # Update learning rate every 20 epochs
+
 
     if epoch % update_frequency == 0 and epoch != 0:
-        return initial_lr * np.power(decay_rate, epoch // update_frequency)
+        return initial_lr * 0.75
     else:
         return lr
 
@@ -124,7 +130,7 @@ lr_callback = LearningRateScheduler(schedule=lr_schedule, verbose=1)
 # early stopping callback
 early_stopper = EarlyStopping(
     monitor="loss",
-    patience = 100,
+    patience = early_stopping_patience,
     verbose=1,
     mode="min",
     restore_best_weights=True
@@ -145,7 +151,7 @@ hist = model.fit(
 )
 
 # shape after time_frames is for amount of predicitons - 1 because only close
-X_last = data_arr[len(data_arr)-time_frame:].reshape(1, time_frame, 3)
+X_last = data_arr[len(data_arr)-time_frame:].reshape(1, time_frame, neurons_dense)
 
 def predict_future(X, model, horizon=5):
     X_in = X
@@ -182,6 +188,15 @@ date_range = pd.date_range(start=monday, periods=len(predictions), freq="D")
 # set the index to the dates
 predictions.index = date_range
 
+# modifications to data_df
+data_df.index.name = None
+data_df = data_df.asfreq('D')
+
+# changing the indices of the df - test
+data_df.dropna(inplace=True)
+data_df = data_df.reset_index(drop=True)
+predictions = predictions.reset_index(drop=True)
+predictions.index = range(len(data_df), len(data_df) + len(predictions))
 
 # Build module for plotting (candlestick)
 # Create a figure with two subplots
@@ -194,11 +209,20 @@ ax1.legend(loc=0)
 ax1.set_title('Loss and Val Loss')
 
 # Second subplot: plot data_df and predictions
-ax2.plot(data_df[len(data_df)-20:])
-ax2.plot(predictions)
+ax2.plot(data_df[-20:], label=data_df.columns)
+ax2.plot(predictions, label=predictions.columns)
+ax2.legend(loc=0)
 ax2.set_title('Data and Predictions')
+
 
 # Save the figure as a PNG image
 fig.savefig(
     f"result_img/training_{epochs}_epochs_{hidden_layers}_layers_{time_frame}_time_frame_{neurons_first_layer + neurons_hidden_loop * hidden_layers + neurons_last_layer + neurons_dense}_neurons.png",
 )
+
+end_zeit = datetime.datetime.now()
+print(f"runtime: {((end_zeit - start_zeit).seconds)/60}")
+
+print(data_df[-20:].index)
+print(predictions.index)
+print(data_df, "\n", predictions)
